@@ -99,9 +99,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:1re
   border-bottom:4px solid transparent;
   transition:all 0.3s;cursor:default;
 }
-.hzone-cell::before{content:'';position:absolute;inset:0;background:var(--hzc,transparent);opacity:0.05;pointer-events:none;transition:opacity 0.3s;}
-.hzone-cell.hz-active::before{opacity:0.16;}
-.hzone-cell.hz-active{border-bottom-width:5px;}
+.hzone-cell::before{content:'';position:absolute;inset:0;background:var(--hzc,transparent);opacity:0.10;pointer-events:none;transition:opacity 0.3s;}
+.hzone-cell.hz-active::before{opacity:0.22;}
+.hzone-cell.hz-active{border-bottom-width:4px;}
 /* Zone label row */
 .hz-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.08rem;}
 .hz-name{font-family:'DM Mono',monospace;font-size:0.66rem;letter-spacing:0.1em;text-transform:uppercase;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -119,6 +119,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:1re
 .hzone-cell.hz-active .hz-arrow{
   display:block;
   animation:arrowpulse 1.6s ease-in-out infinite;
+  filter:drop-shadow(0 0 4px currentColor);
 }
 @keyframes arrowpulse{
   0%,100%{opacity:1;text-shadow:0 0 4px currentColor,0 0 8px currentColor;}
@@ -175,7 +176,7 @@ body.fs-mode .scell{padding:0.7rem 1rem;}
 <body>
 <div id="ld">
   <div class="ld-wrap"><div class="ld-ring"></div><div class="ld-sym">&#8383;</div></div>
-  <div style="display:flex;flex-direction:column;align-items:center;gap:0.2rem">
+  <div style="display:flex;flex-direction:column;align-items:center;gap:0.2rem;width:100%;text-align:center">
     <div class="ld-quote">N&#227;o seja sodomizado!</div>
     <div class="ld-msg" style="color:var(--tx2);letter-spacing:0.12em">&#8212; Renato Amoedo</div>
   </div>
