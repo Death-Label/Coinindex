@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <title>Bitcoin Index · Compact v4</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%23f7931a'/%3E%3Ctext x='16' y='22' text-anchor='middle' font-family='Arial Black%2C Arial%2C sans-serif' font-size='19' font-weight='900' fill='white'%3E%E2%82%BF%3C%2Ftext%3E%3C%2Fsvg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -1078,7 +1079,7 @@ function firstWins(promises){
 
 /* Fetch one URL through all proxies — returns first valid parsed result */
 function proxyFetch(url,parseFn,timeout){
-  timeout=timeout||8000;
+  timeout=timeout||5000;
   return firstWins(PROXY_FNS.map(function(pFn){
     return new Promise(function(resolve){
       var t=setTimeout(function(){resolve(null);},timeout);
@@ -1182,21 +1183,32 @@ function fetchWithTimeout(url,ms){
 }
 
 function fetchCommodity(sym){
-  /* Do NOT encodeURIComponent(sym) — symbols like GC=F contain = which gets
-     double-encoded when the full URL is later wrapped in a proxy. Yahoo accepts raw symbols. */
+  /* Race the 2 Yahoo endpoints through the 2 most reliable proxies = 4 total attempts.
+     Keeps parallelism manageable and avoids proxy rate-limit errors. */
   var urls=[
     'https://query1.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=5d',
-    'https://query2.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=5d',
-    'https://query1.finance.yahoo.com/v7/finance/quote?symbols='+sym,
-    'https://query2.finance.yahoo.com/v7/finance/quote?symbols='+sym
+    'https://query2.finance.yahoo.com/v8/finance/chart/'+sym+'?interval=1d&range=5d'
   ];
-  return (async function(){
-    for(var ui=0;ui<urls.length;ui++){
-      var result=await proxyFetchSeq(urls[ui],parseYahoo);
-      if(result)return result;
-    }
-    return null;
-  })();
+  var topProxies=[PROXY_FNS[0],PROXY_FNS[1]]; /* corsproxy.io + allorigins.win */
+  var allAttempts=[];
+  urls.forEach(function(url){
+    topProxies.forEach(function(pFn){
+      allAttempts.push(new Promise(function(resolve){
+        var t=setTimeout(function(){resolve(null);},6000);
+        fetch(pFn(url))
+          .then(function(r){clearTimeout(t);if(!r||!r.ok)return resolve(null);return r.json();})
+          .then(function(raw){if(!raw)return resolve(null);resolve(parseYahoo(raw));})
+          .catch(function(){clearTimeout(t);resolve(null);});
+      }));
+    });
+  });
+  /* If top 2 proxies all fail, fallback to remaining proxies sequentially */
+  return firstWins(allAttempts).then(function(result){
+    if(result)return result;
+    return proxyFetchSeq(urls[0],parseYahoo).then(function(r){
+      return r||proxyFetchSeq(urls[1],parseYahoo);
+    });
+  });
 }
 
 async function fetchAssetsData(){
@@ -1231,43 +1243,44 @@ async function fetchAssetsData(){
     /* If WS already open, restore pill immediately (no onopen fires on reconnect) */
     if(S_assets.wsA&&S_assets.wsA.readyState===1){setPill('live','Assets · ao vivo');}
 
-    /* Commodities — fetched one at a time to avoid proxy rate limiting */
+    /* Commodities — all fetched in parallel; each races all proxy+URL combos internally */
     var tickers=[
       {id:'gold',sym:'GC=F'},{id:'silver',sym:'SI=F'},{id:'copper',sym:'HG=F'},
       {id:'wti',sym:'CL=F'},{id:'gas',sym:'NG=F'},{id:'sp500',sym:'^GSPC'},
       {id:'nasdaq',sym:'^IXIC'},{id:'wheat',sym:'ZW=F'},{id:'soy',sym:'ZS=F'}
     ];
-    /* Clear variation cache so each cycle re-fetches fresh close prices */
-    tickers.forEach(function(t){delete A_CLOSE[t.id+':1d'];delete A_CLOSE[t.id+':1s'];delete A_CLOSE[t.id+':1m'];});
-    ['btc','eth','cur'].forEach(function(id){['1s','1m','1d'].forEach(function(iv){delete A_CLOSE[id+':'+iv];});});
-    (async function fetchQueue(i){
-      if(i>=tickers.length){
-        initAssetVariations();
-        return;
-      }
-      var t=tickers[i];
-      try{
-        var result=await fetchCommodity(t.sym);
-        if(result){
-          /* Cent conversion for wheat (ZW=F) and soy (ZS=F) — Yahoo quotes in USc */
-          var isCent=(t.sym==='ZW=F'||t.sym==='ZS=F');
-          var price=isCent?result.price/100:result.price;
-          var prevClose=isCent?(result.prevClose?result.prevClose/100:null):result.prevClose;
-          /* Capture prev BEFORE updating so flash triggers correctly */
-          var a=ASSET_LIST.find(function(x){return x.id===t.id;});
-          var prevP=(a&&a._usdPrice)||0;
-          updateAssetFromUsd(t.id,price,prevP);
-          if(!A_IV[t.id])A_IV[t.id]='1d';
-          if(prevClose&&prevClose!==price){
-            A_CLOSE[t.id+':1d']=prevClose;
-            renderVarBadge(t.id,price,prevClose,'1d');
-          } else {
-            fetchAssetVar(t.id,'1d');
-          }
+    /* Only clear 1s/1m variation cache (stale intervals); keep 1d to avoid re-fetch on refresh */
+    tickers.forEach(function(t){delete A_CLOSE[t.id+':1s'];delete A_CLOSE[t.id+':1m'];});
+    ['btc','eth','cur'].forEach(function(id){['1s','1m'].forEach(function(iv){delete A_CLOSE[id+':'+iv];});});
+
+    /* Fetch in batches of 3 — parallel within batch, sequential between batches.
+       Avoids overwhelming proxies while still being 3x faster than fully sequential. */
+    function processTicker(t){
+      return fetchCommodity(t.sym).then(function(result){
+        if(!result)return;
+        var isCent=(t.sym==='ZW=F'||t.sym==='ZS=F');
+        var price=isCent?result.price/100:result.price;
+        var prevClose=isCent?(result.prevClose?result.prevClose/100:null):result.prevClose;
+        var a=ASSET_LIST.find(function(x){return x.id===t.id;});
+        var prevP=(a&&a._usdPrice)||0;
+        updateAssetFromUsd(t.id,price,prevP);
+        if(!A_IV[t.id])A_IV[t.id]='1d';
+        if(prevClose&&prevClose!==price){
+          A_CLOSE[t.id+':1d']=prevClose;
+          renderVarBadge(t.id,price,prevClose,'1d');
+        } else {
+          fetchAssetVar(t.id,'1d');
         }
-      }catch(e){}
-      await fetchQueue(i+1);
-    }(0));
+      }).catch(function(){});
+    }
+    (async function runBatches(){
+      var batchSize=3;
+      for(var i=0;i<tickers.length;i+=batchSize){
+        var batch=tickers.slice(i,i+batchSize);
+        await Promise.allSettled(batch.map(processTicker));
+      }
+      initAssetVariations();
+    }());
 
     startCountdown();
 
