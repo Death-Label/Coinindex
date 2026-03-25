@@ -410,10 +410,10 @@ var ASSET_LIST=[
    unit:'por libra \u00b7 1 lb = 453,6 g',
    vals:{BRL:'-',USD:'-',EUR:'-'},_usdPrice:0,badge:'neu',badgeTxt:'\u2014',sub:'Yahoo Finance \u00b7 futuros HG',
    tip:'Unidade: 1 libra (lb) = 453,6 gramas. Futuros de cobre s\u00e3o cotados em libras no mercado americano (COMEX).\nPresente em toda constru\u00e7\u00e3o e eletr\u00f4nico do planeta. Sua queda antecipa recess\u00f5es globais antes de qualquer outro indicador.'},
-  {id:'wti',label:'Petr\u00f3leo WTI',tag:'Energia',tagClass:'tag-energy',iv:false,
+  {id:'wti',label:'Petr\u00f3leo Brent',tag:'Energia',tagClass:'tag-energy',iv:false,
    unit:'por barril \u00b7 1 barril = 158,99 L',
-   vals:{BRL:'-',USD:'-',EUR:'-'},_usdPrice:0,badge:'neu',badgeTxt:'\u2014',sub:'Yahoo Finance \u00b7 futuros CL',
-   tip:'Unidade: 1 barril de petr\u00f3leo = 158,99 litros (42 gal\u00f5es americanos). \u00c9 a unidade padr\u00e3o do mercado de petr\u00f3leo desde o s\u00e9culo XIX.\nA commodity mais negociada do mundo. Afeta diretamente infla\u00e7\u00e3o, transporte e geopol\u00edtica. Sua varia\u00e7\u00e3o impacta desde o pre\u00e7o da gasolina at\u00e9 o custo de produ\u00e7\u00e3o global.'},
+   vals:{BRL:'-',USD:'-',EUR:'-'},_usdPrice:0,badge:'neu',badgeTxt:'\u2014',sub:'Yahoo Finance \u00b7 futuros BZ (Brent)',
+   tip:'Unidade: 1 barril de petr\u00f3leo = 158,99 litros (42 gal\u00f5es americanos). \u00c9 a unidade padr\u00e3o do mercado de petr\u00f3leo desde o s\u00e9culo XIX.\nBenchmark global \u2014 referencia mais de 70% do petr\u00f3leo negociado mundialmente. Extra\u00eddo do Mar do Norte, \u00e9 a base de pre\u00e7o para Europa, \u00c1sia e Oriente M\u00e9dio.\nDiferente do WTI (americano), o Brent reflete melhor o mercado internacional e costuma ser negociado com pr\u00eamio de $5\u201310 sobre o WTI.'},
   {id:'gas',label:'G\u00e1s Natural',tag:'Energia',tagClass:'tag-energy',iv:false,
    unit:'por MMBtu \u00b7 \u2248 293 kWh',
    vals:{BRL:'-',USD:'-',EUR:'-'},_usdPrice:0,badge:'neu',badgeTxt:'\u2014',sub:'Yahoo Finance \u00b7 futuros NG',
@@ -763,7 +763,7 @@ async function fetchAssetVar(id,iv){
 
     } else {
       /* Commodities — Yahoo v8/chart with historical range via proxyFetch */
-      var ySym=({'gold':'GC=F','silver':'SI=F','copper':'HG=F','wti':'CL=F','gas':'NG=F',
+      var ySym=({'gold':'GC=F','silver':'SI=F','copper':'HG=F','wti':'BZ=F','gas':'NG=F',
                  'sp500':'^GSPC','nasdaq':'^IXIC','wheat':'ZW=F','soy':'ZS=F'})[id];
       if(ySym){
         var yp=IV_YAHOO[iv];
@@ -828,8 +828,8 @@ function buildFooterTip(){
      name:'Bitcoin / Ethereum',
      hours:'Sempre aberto'},
     {ids:['gold','silver','copper','wti','gas'],
-     name:'Metais e Energia (COMEX/NYMEX)',
-     hours:'Metais: dom '+cmO+' – sex '+cmC+' (pausa '+cmPS+'–'+cmPE+')<br>Energia: dom '+nyO+' – sex '+nyC+' (pausa '+nyPS+'–'+nyPE+')'},
+     name:'Metais (COMEX) e Energia (ICE/NYMEX)',
+     hours:'Metais: dom '+cmO+' – sex '+cmC+' (pausa '+cmPS+'–'+cmPE+')<br>Brent (ICE): quase 24h dom–sex (pausa ~1h meia-noite UTC)<br>Gás Natural: dom '+nyO+' – sex '+nyC+' (pausa '+nyPS+'–'+nyPE+')'},
     {ids:['sp500','nasdaq'],
      name:'S&P 500 / Nasdaq (NYSE)',
      hours:'Seg–sex, '+nseO+' às '+nseC},
@@ -1246,7 +1246,7 @@ async function fetchAssetsData(){
     /* Commodities — all fetched in parallel; each races all proxy+URL combos internally */
     var tickers=[
       {id:'gold',sym:'GC=F'},{id:'silver',sym:'SI=F'},{id:'copper',sym:'HG=F'},
-      {id:'wti',sym:'CL=F'},{id:'gas',sym:'NG=F'},{id:'sp500',sym:'^GSPC'},
+      {id:'wti',sym:'BZ=F'},{id:'gas',sym:'NG=F'},{id:'sp500',sym:'^GSPC'},
       {id:'nasdaq',sym:'^IXIC'},{id:'wheat',sym:'ZW=F'},{id:'soy',sym:'ZS=F'}
     ];
     /* Only clear 1s/1m variation cache (stale intervals); keep 1d to avoid re-fetch on refresh */
